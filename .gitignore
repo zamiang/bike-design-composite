@@ -1,0 +1,28 @@
+# Design source PDFs (user-specific, not for public repo)
+*.pdf
+
+# Work directory: all images are heavy and reproducible — only commit scripts
+work/*.png
+work/*.jpg
+work/*.jpeg
+work/*.webp
+work/composites/
+work/composites2/
+work/composites3/
+work/final/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+
+# Claude Code session state
+.claude/
