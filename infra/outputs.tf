@@ -16,6 +16,11 @@ output "deployer_service_account" {
   value = google_service_account.deployer.email
 }
 
+output "claude_reviewer_service_account" {
+  description = "SA the Claude review workflows impersonate via WIF. Pass to google-github-actions/auth as service_account."
+  value       = google_service_account.claude_reviewer.email
+}
+
 output "wif_provider_resource_name" {
   description = "Full resource name to pass to google-github-actions/auth as workload_identity_provider."
   value       = "projects/${local.project_number}/locations/global/workloadIdentityPools/${var.wif_pool_id}/providers/github-provider"

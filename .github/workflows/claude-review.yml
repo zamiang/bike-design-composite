@@ -1,0 +1,42 @@
+name: claude-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+env:
+  # Replace PROJECT_NUMBER with `gcloud projects describe time-279118 --format='value(projectNumber)'`
+  WIF_PROVIDER: projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  REVIEWER_SA: claude-reviewer@time-279118.iam.gserviceaccount.com
+  ANTHROPIC_VERTEX_PROJECT_ID: time-279118
+  CLOUD_ML_REGION: us-east5
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.REVIEWER_SA }}
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          use_vertex: "true"
+          claude_args: "--model claude-sonnet-4-5"
+          prompt: |
+            Review this pull request against the guidance in CLAUDE.md.
+            Prioritize: GCP/IAM security and SA scoping, Cloud Run plus Vertex config correctness,
+            Python bugs, and template structural issues. Skip stylistic nits already covered
+            by ruff or djlint, and skip the `work/` directory unless something is genuinely broken.
+            Post one consolidated review with inline comments where they help. Prefix
+            preferential feedback with "(nit)".
