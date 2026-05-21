@@ -1,0 +1,14 @@
+{% extends "_base.html" %}
+{% block title %}Sign in · Bike Design Composite{% endblock %}
+{% block body %}
+<div class="panel" style="max-width:460px;margin:40px auto">
+  <h2>Sign in</h2>
+  <form method="post" action="/login">
+    <label>Password
+      <input type="password" name="password" autofocus required>
+    </label>
+    {% if error %}<div class="err">Wrong password.</div>{% endif %}
+    <button type="submit">Sign in</button>
+  </form>
+</div>
+{% endblock %}

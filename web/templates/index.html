@@ -1,0 +1,25 @@
+{% extends "_base.html" %}
+{% block headeractions %}
+<form method="post" action="/logout"><button class="secondary" type="submit">Sign out</button></form>
+{% endblock %}
+{% block body %}
+<div class="panel">
+  <h2>New composite</h2>
+  <form method="post" action="/generate" enctype="multipart/form-data">
+    <label>Paint-spec PDF
+      <input type="file" name="pdf" accept="application/pdf" required>
+    </label>
+    <label>Bike photos to composite onto</label>
+    {% for b in bases %}
+    <label class="choice">
+      <input type="checkbox" name="bases" value="{{ b.name }}" checked>
+      <span><strong>{{ b.label }}</strong><small>{{ b.scene[:120] }}…</small></span>
+    </label>
+    {% endfor %}
+    <p style="color:var(--muted);font-size:12px;margin-top:14px">
+      Each composite takes ~30–60 seconds and costs ~$0.15. The page will wait until they finish.
+    </p>
+    <button type="submit">Generate</button>
+  </form>
+</div>
+{% endblock %}
