@@ -42,6 +42,10 @@ Edit `PROJECT`, `VERSIONS`, and `BASES` at the top of `composite_final.py` for y
 
 About **$0.15 per generated image** (`gemini-3-pro-image-preview`, 2K output, ~30–60 s per image).
 
+## Web app
+
+See [`web/`](web/) for a password-protected FastAPI app that wraps this pipeline — upload a paint-spec PDF, pick which bundled bike photos to composite onto, get the results back. Deployable to Cloud Run; see `web/README.md`.
+
 ## Status
 
-This started as a single-shot preview for one specific frame design (Scarab Letras 26035). Next step: a small web app where you upload a design PDF and a bike photo and get back the composite, so anyone ordering a custom Scarab can preview their paint before pulling the trigger.
+Started as a single-shot preview for one specific frame design (Scarab Letras 26035). The `web/` app generalizes it so anyone ordering a custom Scarab can preview their paint before pulling the trigger.

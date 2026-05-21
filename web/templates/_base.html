@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Bike Design Composite{% endblock %}</title>
+<style>
+  :root { color-scheme: light dark; --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --fg:#e7ecf3; --muted:#9aa3b2; --accent:#6ea8ff; --err:#ff6e6e; }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+  header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;gap:18px;flex-wrap:wrap}
+  header h1{margin:0;font-size:18px;letter-spacing:.3px}
+  header .sub{color:var(--muted);font-size:13px}
+  main{padding:22px;max-width:1200px;margin:0 auto}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:22px}
+  .panel h2{margin:0 0 14px;font-size:13px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase}
+  label{display:block;margin:10px 0;color:var(--muted);font-size:13px}
+  input[type=password], input[type=file]{display:block;width:100%;max-width:420px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#0a0c11;color:var(--fg);font:inherit}
+  input[type=checkbox]{margin-right:8px;transform:translateY(1px)}
+  button, .btn{background:var(--accent);color:#0a0f1c;border:0;padding:10px 18px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600}
+  button.secondary{background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:400}
+  .err{color:var(--err);margin:10px 0}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid img{width:100%;height:auto;border-radius:10px;background:#000;display:block}
+  figcaption{color:var(--muted);font-size:12px;margin-top:6px}
+  .choice{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer}
+  .choice:hover{border-color:var(--accent)}
+  .choice small{display:block;color:var(--muted)}
+  a{color:var(--accent)}
+  @media (max-width:780px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Bike Design Composite</h1>
+    <div class="sub">Upload a Scarab paint-spec PDF · get a photoreal preview on the bike</div>
+  </div>
+  {% block headeractions %}{% endblock %}
+</header>
+<main>
+  {% block body %}{% endblock %}
+</main>
+</body>
+</html>

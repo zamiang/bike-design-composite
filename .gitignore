@@ -26,3 +26,7 @@ venv/
 
 # Claude Code session state
 .claude/
+
+# Web app local state
+web/.venv/
+web/.env
