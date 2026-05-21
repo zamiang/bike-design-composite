@@ -1,5 +1,4 @@
 from PIL import Image
-import os
 
 # The main side-view frame illustration sits roughly in the lower-right area
 # of each page. Crop bounds determined from page_V1-1.png (2700x2105).

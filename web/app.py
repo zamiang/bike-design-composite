@@ -1,5 +1,7 @@
 """Small password-protected web app: upload a Scarab paint-spec PDF, get composites back."""
+
 from __future__ import annotations
+
 import base64
 import os
 import secrets
@@ -8,15 +10,14 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request, UploadFile, File, Depends
+from composite import BASES, composite
+from extract import extract_design, to_png_bytes
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from itsdangerous import BadSignature, URLSafeSerializer
 from google import genai
-
-from extract import extract_design, to_png_bytes
-from composite import BASES, composite
+from itsdangerous import BadSignature, URLSafeSerializer
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or secrets.token_urlsafe(32)
@@ -43,8 +44,8 @@ def require_auth(request: Request) -> None:
     try:
         if signer.loads(token) != "ok":
             raise HTTPException(status_code=401, detail="login required")
-    except BadSignature:
-        raise HTTPException(status_code=401, detail="login required")
+    except BadSignature as e:
+        raise HTTPException(status_code=401, detail="login required") from e
 
 
 @app.exception_handler(HTTPException)
@@ -119,7 +120,8 @@ async def generate(
     results = []
     errors = []
     with ThreadPoolExecutor(max_workers=len(chosen)) as ex:
-        for base, fut in zip(chosen, [ex.submit(run_one, b) for b in chosen]):
+        futures = [ex.submit(run_one, b) for b in chosen]
+        for base, fut in zip(chosen, futures, strict=True):
             try:
                 _, img_bytes = fut.result()
                 results.append((base, base64.b64encode(img_bytes).decode("ascii")))

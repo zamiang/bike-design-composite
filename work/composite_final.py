@@ -1,6 +1,8 @@
 """Final composites: 1 image per design per base photo. 5 designs x 2 bases = 10."""
+
 import time
 from pathlib import Path
+
 from google import genai
 from google.genai import types
 
@@ -14,12 +16,12 @@ BASES = {
     "studio": {
         "path": WORK / "bike_base3.jpg",
         "aspect": "3:2",
-        "scene": "a clean studio product shot on a seamless neutral gray backdrop with a soft gradient floor shadow. The bike is shown at a slight 3/4 angle from the drive side (right side), facing slightly toward the camera. It has drop handlebars with black bar tape, a black Ergon saddle, black seatpost, deep-section Zipp 303 carbon wheels with tan-sidewall Vittoria Corsa tires, a black drivetrain with silver chainrings, disc brake calipers, and two black water bottle cages on the frame. The current paint is solid yellow with small white \"SCARAB\" wordmarks.",
+        "scene": 'a clean studio product shot on a seamless neutral gray backdrop with a soft gradient floor shadow. The bike is shown at a slight 3/4 angle from the drive side (right side), facing slightly toward the camera. It has drop handlebars with black bar tape, a black Ergon saddle, black seatpost, deep-section Zipp 303 carbon wheels with tan-sidewall Vittoria Corsa tires, a black drivetrain with silver chainrings, disc brake calipers, and two black water bottle cages on the frame. The current paint is solid yellow with small white "SCARAB" wordmarks.',
     },
     "alley": {
         "path": WORK / "bike_base_alley.jpg",
         "aspect": "3:2",
-        "scene": "an environmental shot in a tiled outdoor passageway. The bike is in pure left-side profile view (non-drive side), centered in the frame. Behind it is a worn white double-door with a padlock, flanked by red brick walls on both sides. The ground is tiled stone. The bike has black drop handlebars with bar tape, a black saddle, black seatpost, classic round-profile black wheels with black tires (no tan sidewalls, no deep section), a black rim brake drivetrain with silver crankset/chainrings visible, and a small \"LETRAS\" white panel on the down tube. The current paint is solid red.",
+        "scene": 'an environmental shot in a tiled outdoor passageway. The bike is in pure left-side profile view (non-drive side), centered in the frame. Behind it is a worn white double-door with a padlock, flanked by red brick walls on both sides. The ground is tiled stone. The bike has black drop handlebars with bar tape, a black saddle, black seatpost, classic round-profile black wheels with black tires (no tan sidewalls, no deep section), a black rim brake drivetrain with silver crankset/chainrings visible, and a small "LETRAS" white panel on the down tube. The current paint is solid red.',
     },
 }
 
@@ -70,19 +72,29 @@ def main():
                     config=types.GenerateContentConfig(
                         response_modalities=["IMAGE"],
                         candidate_count=1,
-                        image_config=types.ImageConfig(aspect_ratio=base["aspect"], image_size="2K"),
+                        image_config=types.ImageConfig(
+                            aspect_ratio=base["aspect"], image_size="2K"
+                        ),
                     ),
                 )
             except Exception as e:
-                print(f"  ERROR: {e}", flush=True); continue
+                print(f"  ERROR: {e}", flush=True)
+                continue
             saved = False
             for cand in resp.candidates or []:
-                for part in (cand.content.parts if cand.content else []):
+                for part in cand.content.parts if cand.content else []:
                     if getattr(part, "inline_data", None) and part.inline_data.data:
-                        out_path.write_bytes(part.inline_data.data); saved = True; break
-                if saved: break
+                        out_path.write_bytes(part.inline_data.data)
+                        saved = True
+                        break
+                if saved:
+                    break
             dt = time.time() - t0
-            print(f"  -> {out_path.name} ({out_path.stat().st_size//1024} KB, {dt:.1f}s)" if saved else f"  no image ({dt:.1f}s)")
+            print(
+                f"  -> {out_path.name} ({out_path.stat().st_size // 1024} KB, {dt:.1f}s)"
+                if saved
+                else f"  no image ({dt:.1f}s)"
+            )
 
 
 if __name__ == "__main__":

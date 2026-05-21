@@ -1,0 +1,26 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "venv", "work/composites*", "work/final"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = [
+  "E501",  # line length handled by formatter
+  "B008",  # FastAPI requires File(...)/Form(...)/Depends(...) in argument defaults
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.djlint]
+profile = "jinja"
+indent = 2
+max_line_length = 120
+ignore = "J018,H006,H021,H023,H030,H031,T003"
+# J018: url_for is Flask-specific; this app is FastAPI.
+# H006: img height/width can't be set on data: URIs of unknown dimensions.
+# H021: inline styles allowed for one-off layout overrides.
+# H023: entity references (&rsquo;, &hellip;) are intentional typography.
+# H030/H031: meta description/keywords; this is a private internal app.
+# T003: endblock naming is purely stylistic.

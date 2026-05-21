@@ -1,7 +1,10 @@
 """Generate a photorealistic composite of a design onto a bike base photo."""
+
 from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
+
 from google import genai
 from google.genai import types
 
@@ -32,7 +35,7 @@ BASES: dict[str, Base] = {
             "with black bar tape, a black Ergon saddle, black seatpost, deep-section Zipp 303 "
             "carbon wheels with tan-sidewall Vittoria Corsa tires, a black drivetrain with "
             "silver chainrings, disc brake calipers, and two black water bottle cages on the "
-            "frame. The current paint is solid yellow with small white \"SCARAB\" wordmarks."
+            'frame. The current paint is solid yellow with small white "SCARAB" wordmarks.'
         ),
     ),
     "alley": Base(
@@ -47,7 +50,7 @@ BASES: dict[str, Base] = {
             "The ground is tiled stone. The bike has black drop handlebars with bar tape, a "
             "black saddle, black seatpost, classic round-profile black wheels with black tires "
             "(no tan sidewalls, no deep section), a black rim brake drivetrain with silver "
-            "crankset/chainrings visible, and a small \"LETRAS\" white panel on the down tube. "
+            'crankset/chainrings visible, and a small "LETRAS" white panel on the down tube. '
             "The current paint is solid red."
         ),
     ),
@@ -101,7 +104,7 @@ def composite(
         ),
     )
     for cand in resp.candidates or []:
-        for part in (cand.content.parts if cand.content else []):
+        for part in cand.content.parts if cand.content else []:
             if getattr(part, "inline_data", None) and part.inline_data.data:
                 return part.inline_data.data
     raise RuntimeError("Model returned no image")

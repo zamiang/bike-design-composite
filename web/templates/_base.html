@@ -1,13 +1,16 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}Paint Preview · Scarab{% endblock %}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:ital,opsz,wght@1,9..144,300;0,9..144,500&display=swap" rel="stylesheet">
-<style>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>
+      {% block title %}Paint Preview · Scarab{% endblock %}
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:ital,opsz,wght@1,9..144,300;0,9..144,500&display=swap"
+          rel="stylesheet">
+    <style>
   :root {
     color-scheme: light;
     --paper:   oklch(0.972 0.008 75);
@@ -223,19 +226,21 @@
     .picker{grid-template-columns:1fr;gap:20px}
     .results{grid-template-columns:1fr;gap:28px}
   }
-</style>
-</head>
-<body>
-<header class="masthead">
-  <a href="/" class="wordmark">
-    <span class="mark">Scarab</span>
-    <span class="div" aria-hidden="true"></span>
-    <span class="sub">Paint Preview</span>
-  </a>
-  <nav>{% block headeractions %}{% endblock %}</nav>
-</header>
-<main>
-  {% block body %}{% endblock %}
-</main>
-</body>
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <a href="/" class="wordmark">
+        <span class="mark">Scarab</span>
+        <span class="div" aria-hidden="true"></span>
+        <span class="sub">Paint Preview</span>
+      </a>
+      <nav>
+        {% block headeractions %}{% endblock %}
+      </nav>
+    </header>
+    <main>
+      {% block body %}{% endblock %}
+    </main>
+  </body>
 </html>
