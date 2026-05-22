@@ -1,16 +1,15 @@
-name: deploy
+name: deploy-app
 
 on:
   push:
     branches: [main]
     paths:
       - "web/**"
-      - "infra/**"
-      - ".github/workflows/deploy.yml"
+      - ".github/workflows/deploy-app.yml"
   workflow_dispatch:
 
 concurrency:
-  group: deploy
+  group: deploy-app
   cancel-in-progress: false
 
 env:
@@ -18,8 +17,8 @@ env:
   REGION: us-central1
   REPO: scarab-paint-preview
   IMAGE_NAME: app
-  # Replace PROJECT_NUMBER below with `gcloud projects describe time-279118 --format='value(projectNumber)'`
-  WIF_PROVIDER: projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  SERVICE_NAME: scarab-paint-preview
+  WIF_PROVIDER: projects/${{ vars.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider
   DEPLOYER_SA: paint-preview-deployer@time-279118.iam.gserviceaccount.com
 
 jobs:
@@ -30,6 +29,15 @@ jobs:
       id-token: write
 
     steps:
+      - name: Check repo variable is set
+        env:
+          PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+        run: |
+          if [ -z "$PROJECT_NUMBER" ]; then
+            echo "::error::Repo variable GCP_PROJECT_NUMBER is not set. Run: gh variable set GCP_PROJECT_NUMBER --body=\$(gcloud projects describe \$PROJECT_ID --format='value(projectNumber)')"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - id: auth
@@ -51,20 +59,17 @@ jobs:
           docker push "$IMAGE"
           echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.9.8
-
-      - name: Terraform init
-        working-directory: infra
-        run: terraform init -input=false
-
-      - name: Terraform apply
-        working-directory: infra
+      - name: Deploy new revision to Cloud Run
         env:
-          TF_VAR_image: ${{ steps.build.outputs.image }}
-        run: terraform apply -input=false -auto-approve
+          IMAGE: ${{ steps.build.outputs.image }}
+        run: |
+          gcloud run deploy "$SERVICE_NAME" \
+            --image="$IMAGE" \
+            --region="$REGION" \
+            --quiet
 
       - name: Print service URL
-        working-directory: infra
-        run: terraform output -raw service_url
+        run: |
+          gcloud run services describe "$SERVICE_NAME" \
+            --region="$REGION" \
+            --format='value(status.url)'

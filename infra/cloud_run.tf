@@ -74,6 +74,9 @@ resource "google_cloud_run_v2_service" "app" {
     ignore_changes = [
       client,
       client_version,
+      # Image is rolled by the deploy-app workflow via `gcloud run deploy`.
+      # Terraform owns the rest of the service config; it should not fight the app pipeline.
+      template[0].containers[0].image,
     ]
   }
 }

@@ -98,11 +98,18 @@ async def generate(
     bases: list[str] = Form(...),
     _: None = Depends(require_auth),
 ):
-    pdf_bytes = await pdf.read()
-    if not pdf_bytes:
+    # Stream the upload so a 1 GB PDF can't fill the container before we reject it.
+    # Cap at 50 MB; with concurrency=4, that bounds in-flight upload memory to ~200 MB.
+    max_bytes = 50 * 1024 * 1024
+    chunk_size = 1024 * 1024
+    buf = bytearray()
+    while chunk := await pdf.read(chunk_size):
+        buf.extend(chunk)
+        if len(buf) > max_bytes:
+            raise HTTPException(status_code=413, detail="file too large (50 MB max)")
+    if not buf:
         raise HTTPException(status_code=400, detail="empty file")
-    if len(pdf_bytes) > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="file too large (50 MB max)")
+    pdf_bytes = bytes(buf)
 
     chosen = [BASES[b] for b in bases if b in BASES]
     if not chosen:

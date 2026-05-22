@@ -1,0 +1,65 @@
+name: infra-apply
+
+# Manual-only. Terraform changes ship by running this from the Actions tab
+# after the PR's infra-plan comment has been reviewed.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag, or SHA to apply from (defaults to main)"
+        required: false
+        default: "main"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: infra-apply
+  cancel-in-progress: false
+
+env:
+  WIF_PROVIDER: projects/${{ vars.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  DEPLOYER_SA: paint-preview-deployer@time-279118.iam.gserviceaccount.com
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    # Wire this to a GitHub `production` environment in repo settings to require
+    # a reviewer approval before apply runs. The environment can also hold any
+    # apply-only secrets if we add them later.
+    environment: production
+    steps:
+      - name: Check repo variable is set
+        env:
+          PROJECT_NUMBER: ${{ vars.GCP_PROJECT_NUMBER }}
+        run: |
+          if [ -z "$PROJECT_NUMBER" ]; then
+            echo "::error::Repo variable GCP_PROJECT_NUMBER is not set."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform init
+        working-directory: infra
+        run: terraform init -input=false
+
+      - name: Terraform apply
+        working-directory: infra
+        run: terraform apply -input=false -auto-approve
+
+      - name: Print service URL
+        working-directory: infra
+        run: terraform output -raw service_url

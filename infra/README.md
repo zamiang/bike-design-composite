@@ -64,13 +64,14 @@ gcloud iam workload-identity-pools providers create-oidc github-provider \
   --attribute-condition="assertion.repository == '${REPO}'"
 ```
 
-Then grab the project number, you'll need it for the workflow:
+Then publish the project number as a GitHub repo variable so the workflows can build the `WIF_PROVIDER` resource name themselves:
 
 ```sh
-gcloud projects describe "$PROJECT" --format='value(projectNumber)'
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
+gh variable set GCP_PROJECT_NUMBER --body "$PROJECT_NUMBER"
 ```
 
-Edit `.github/workflows/deploy.yml` and replace `PROJECT_NUMBER` in `WIF_PROVIDER` with that number.
+(Set it once per repo. The workflows fail loudly with a clear message if it's missing.)
 
 ## First apply
 
@@ -82,9 +83,20 @@ terraform init
 terraform apply
 ```
 
-You should see a `service_url` output pointing to a `*.run.app` URL that serves the hello-world page. From here on, every push to `main` rebuilds the image and rolls a new revision.
+You should see a `service_url` output pointing to a `*.run.app` URL that serves the hello-world page.
+
+## How deploys roll after bootstrap
+
+Two pipelines, deliberately separate:
+
+- **App code (`web/**`)**: every push to `main` runs `.github/workflows/deploy-app.yml`, which builds a new image, pushes it, and calls `gcloud run deploy` to roll a revision. Terraform is not invoked. The `image` field on the Cloud Run service is in `ignore_changes`, so Terraform won't fight the app pipeline.
+- **Infra (`infra/**`)**: opening a PR runs `.github/workflows/infra-plan.yml`, which posts a `terraform plan` as a sticky PR comment. Nothing is applied. After merging, run `.github/workflows/infra-apply.yml` manually from the Actions tab. Wire that workflow's `production` environment in repo settings to require reviewer approval if you want a second pair of eyes.
+
+This split keeps a bad infra PR from rolling out alongside an app change. Image rolls are fast and low-risk; infra rolls are slow and manual.
 
 ## Local deploys (skip GitHub Actions)
+
+App-only:
 
 ```sh
 SHA=$(git rev-parse --short HEAD)
@@ -93,8 +105,14 @@ IMAGE="us-central1-docker.pkg.dev/time-279118/scarab-paint-preview/app:${SHA}"
 gcloud auth configure-docker us-central1-docker.pkg.dev
 docker build -t "$IMAGE" ../web
 docker push "$IMAGE"
+gcloud run deploy scarab-paint-preview --image="$IMAGE" --region=us-central1
+```
 
-terraform apply -var="image=$IMAGE"
+Infra-only:
+
+```sh
+cd infra
+terraform apply
 ```
 
 ## What's where
