@@ -1,45 +1,246 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{% block title %}Bike Design Composite{% endblock %}</title>
-<style>
-  :root { color-scheme: light dark; --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --fg:#e7ecf3; --muted:#9aa3b2; --accent:#6ea8ff; --err:#ff6e6e; }
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>
+      {% block title %}Paint Preview · Scarab{% endblock %}
+    </title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:ital,opsz,wght@1,9..144,300;0,9..144,500&display=swap"
+          rel="stylesheet">
+    <style>
+  :root {
+    color-scheme: light;
+    --paper:   oklch(0.972 0.008 75);
+    --paper-2: oklch(0.945 0.012 75);
+    --ink:     oklch(0.22  0.015 60);
+    --ink-2:   oklch(0.45  0.012 60);
+    --ink-3:   oklch(0.62  0.010 60);
+    --rule:    oklch(0.86  0.013 70);
+    --rule-2:  oklch(0.78  0.014 70);
+    --accent:  oklch(0.46  0.10  38);
+    --accent-ink: oklch(0.972 0.008 75);
+    --err:     oklch(0.50  0.16  25);
+    --focus:   oklch(0.55  0.10  38);
+  }
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
-  header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;gap:18px;flex-wrap:wrap}
-  header h1{margin:0;font-size:18px;letter-spacing:.3px}
-  header .sub{color:var(--muted);font-size:13px}
-  main{padding:22px;max-width:1200px;margin:0 auto}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:22px}
-  .panel h2{margin:0 0 14px;font-size:13px;letter-spacing:.4px;color:var(--muted);text-transform:uppercase}
-  label{display:block;margin:10px 0;color:var(--muted);font-size:13px}
-  input[type=password], input[type=file]{display:block;width:100%;max-width:420px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#0a0c11;color:var(--fg);font:inherit}
-  input[type=checkbox]{margin-right:8px;transform:translateY(1px)}
-  button, .btn{background:var(--accent);color:#0a0f1c;border:0;padding:10px 18px;border-radius:8px;cursor:pointer;font:inherit;font-weight:600}
-  button.secondary{background:transparent;color:var(--fg);border:1px solid var(--line);font-weight:400}
-  .err{color:var(--err);margin:10px 0}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .grid img{width:100%;height:auto;border-radius:10px;background:#000;display:block}
-  figcaption{color:var(--muted);font-size:12px;margin-top:6px}
-  .choice{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer}
-  .choice:hover{border-color:var(--accent)}
-  .choice small{display:block;color:var(--muted)}
-  a{color:var(--accent)}
-  @media (max-width:780px){.grid{grid-template-columns:1fr}}
-</style>
-</head>
-<body>
-<header>
-  <div>
-    <h1>Bike Design Composite</h1>
-    <div class="sub">Upload a Scarab paint-spec PDF · get a photoreal preview on the bike</div>
-  </div>
-  {% block headeractions %}{% endblock %}
-</header>
-<main>
-  {% block body %}{% endblock %}
-</main>
-</body>
+  html,body{margin:0;background:var(--paper);color:var(--ink);
+    font:400 16px/1.55 "Inter","Helvetica Neue",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  ::selection{background:var(--ink);color:var(--paper)}
+
+  a{color:var(--ink);text-underline-offset:3px;text-decoration-thickness:1px}
+  a:hover{color:var(--accent)}
+
+  .masthead{
+    border-bottom:1px solid var(--rule);
+    padding:28px clamp(20px,5vw,56px) 22px;
+    display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;
+  }
+  .wordmark{display:flex;align-items:baseline;gap:14px;line-height:1;text-decoration:none}
+  .wordmark .mark{
+    font-family:"Fraunces",Georgia,serif;font-weight:300;font-style:italic;
+    font-size:34px;letter-spacing:-0.01em;color:var(--ink);
+  }
+  .wordmark .div{
+    width:1px;height:22px;background:var(--rule-2);transform:translateY(-1px);
+  }
+  .wordmark .sub{
+    font-size:11px;letter-spacing:0.22em;text-transform:uppercase;
+    color:var(--ink-2);font-weight:500;
+  }
+  .masthead nav{display:flex;align-items:center;gap:22px}
+  .masthead nav a, .masthead nav button{
+    font:inherit;background:none;border:0;padding:0;cursor:pointer;
+    font-size:13px;letter-spacing:0.04em;color:var(--ink-2);
+    text-decoration:none;
+  }
+  .masthead nav a:hover, .masthead nav button:hover{color:var(--accent)}
+
+  main{padding:clamp(36px,7vw,84px) clamp(20px,5vw,56px) 96px;max-width:1180px;margin:0 auto}
+
+  section{margin:0 0 72px}
+  section:last-child{margin-bottom:0}
+  .eyebrow{
+    font-size:11px;letter-spacing:0.24em;text-transform:uppercase;
+    color:var(--ink-2);font-weight:500;margin:0 0 18px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .eyebrow::after{
+    content:"";flex:1;height:1px;background:var(--rule);
+  }
+  h1.display{
+    font-family:"Fraunces",Georgia,serif;font-weight:300;font-style:italic;
+    font-size:clamp(40px,6vw,68px);line-height:1.02;letter-spacing:-0.015em;
+    margin:0 0 16px;max-width:18ch;
+  }
+  .lede{
+    font-size:18px;line-height:1.55;color:var(--ink-2);max-width:60ch;
+    margin:0 0 56px;
+  }
+  h2.heading{
+    font-family:"Fraunces",Georgia,serif;font-weight:300;font-style:italic;
+    font-size:28px;line-height:1.1;letter-spacing:-0.01em;
+    margin:0 0 24px;color:var(--ink);
+  }
+
+  .field{display:block;margin:0 0 28px;max-width:520px}
+  .field-label{
+    display:block;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;
+    color:var(--ink-2);font-weight:500;margin:0 0 10px;
+  }
+  input[type=password], input[type=file]{
+    width:100%;padding:12px 0;border:0;border-bottom:1px solid var(--rule-2);
+    background:transparent;color:var(--ink);font:inherit;font-size:16px;
+    border-radius:0;outline:0;
+  }
+  input[type=password]:focus, input[type=file]:focus{
+    border-bottom-color:var(--ink);
+  }
+  input[type=file]{padding:14px 0 12px;font-size:14px;color:var(--ink-2)}
+  input[type=file]::file-selector-button{
+    margin-right:14px;padding:8px 14px;border:1px solid var(--rule-2);
+    background:transparent;color:var(--ink);font:inherit;font-size:12px;
+    letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;
+    border-radius:999px;transition:border-color .15s,color .15s;
+  }
+  input[type=file]::file-selector-button:hover{
+    border-color:var(--ink);
+  }
+
+  .btn-primary{
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--ink);color:var(--paper);border:0;
+    padding:14px 26px;border-radius:999px;cursor:pointer;
+    font:inherit;font-size:13px;font-weight:500;
+    letter-spacing:0.14em;text-transform:uppercase;
+    transition:background .2s cubic-bezier(.2,.7,.2,1),transform .2s cubic-bezier(.2,.7,.2,1);
+  }
+  .btn-primary:hover{background:var(--accent);transform:translateY(-1px)}
+  .btn-primary:active{transform:translateY(0)}
+  .btn-primary:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+  .btn-primary .arrow{transition:transform .25s cubic-bezier(.2,.7,.2,1)}
+  .btn-primary:hover .arrow{transform:translateX(4px)}
+
+  .link-arrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:13px;letter-spacing:0.06em;color:var(--ink);
+    text-decoration:none;border-bottom:1px solid transparent;
+    padding-bottom:2px;transition:color .15s,border-color .15s;
+  }
+  .link-arrow .arrow{transition:transform .25s cubic-bezier(.2,.7,.2,1)}
+  .link-arrow:hover{color:var(--accent);border-bottom-color:var(--accent)}
+  .link-arrow:hover .arrow{transform:translateX(4px)}
+
+  .picker{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px;margin:0 0 36px}
+  .pick{
+    position:relative;display:block;cursor:pointer;
+    border:1px solid var(--rule);background:var(--paper-2);
+    transition:border-color .2s, background .2s;
+  }
+  .pick:hover{border-color:var(--ink-2)}
+  .pick input{position:absolute;opacity:0;pointer-events:none}
+  .pick figure{margin:0;display:flex;flex-direction:column}
+  .pick .thumb{
+    aspect-ratio:3/2;background:var(--paper-2) center/cover no-repeat;
+  }
+  .pick .meta{padding:18px 20px 20px;border-top:1px solid var(--rule)}
+  .pick .meta-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+  .pick .name{
+    font-family:"Fraunces",Georgia,serif;font-style:italic;font-weight:500;
+    font-size:20px;line-height:1.1;letter-spacing:-0.005em;color:var(--ink);
+  }
+  .pick .scene{font-size:13px;line-height:1.5;color:var(--ink-2);margin:0}
+  .pick .tick{
+    width:20px;height:20px;border:1px solid var(--rule-2);border-radius:999px;
+    flex-shrink:0;display:grid;place-items:center;
+    transition:background .2s,border-color .2s;
+  }
+  .pick input:checked ~ figure .tick{background:var(--ink);border-color:var(--ink)}
+  .pick input:checked ~ figure .tick::after{
+    content:"";width:7px;height:7px;border-radius:999px;background:var(--paper);
+  }
+  .pick:has(input:checked){border-color:var(--ink);background:var(--paper)}
+
+  .note{
+    font-size:13px;color:var(--ink-3);max-width:60ch;margin:0 0 28px;
+    border-top:1px solid var(--rule);padding-top:18px;
+  }
+
+  .err{
+    color:var(--err);font-size:14px;margin:14px 0;
+  }
+
+  .results{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:40px;margin:0}
+  .results figure{margin:0}
+  .results a{display:block;background:var(--paper-2);overflow:hidden}
+  .results img{
+    display:block;width:100%;height:auto;
+    transition:transform .6s cubic-bezier(.2,.7,.2,1);
+  }
+  .results a:hover img{transform:scale(1.012)}
+  .results figcaption{
+    display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    margin-top:14px;font-size:13px;color:var(--ink-2);
+  }
+  .results figcaption .name{
+    color:var(--ink);font-family:"Fraunces",Georgia,serif;
+    font-style:italic;font-size:18px;
+  }
+  .results figcaption .dl{
+    font-size:11px;letter-spacing:0.18em;text-transform:uppercase;
+    color:var(--ink-2);
+  }
+
+  .meta-line{
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+    color:var(--ink-2);font-size:13px;margin:0 0 28px;
+  }
+  .meta-line strong{color:var(--ink);font-weight:500}
+  .meta-line .dot{width:3px;height:3px;border-radius:999px;background:var(--rule-2);display:inline-block}
+
+  .sheet{
+    background:oklch(0.985 0.005 80);padding:24px;max-width:560px;
+    border:1px solid var(--rule);
+  }
+  .sheet img{display:block;width:100%;height:auto}
+
+  .login-frame{
+    min-height:calc(100vh - 200px);display:grid;place-items:center;
+    padding:40px 20px;
+  }
+  .login-card{width:100%;max-width:380px}
+  .login-card h1{
+    font-family:"Fraunces",Georgia,serif;font-weight:300;font-style:italic;
+    font-size:42px;line-height:1;margin:0 0 8px;letter-spacing:-0.01em;
+  }
+  .login-card .lede{font-size:15px;margin-bottom:36px}
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;animation:none !important}
+  }
+  @media (max-width:640px){
+    .wordmark .mark{font-size:28px}
+    .picker{grid-template-columns:1fr;gap:20px}
+    .results{grid-template-columns:1fr;gap:28px}
+  }
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <a href="/" class="wordmark">
+        <span class="mark">Scarab</span>
+        <span class="div" aria-hidden="true"></span>
+        <span class="sub">Paint Preview</span>
+      </a>
+      <nav>
+        {% block headeractions %}{% endblock %}
+      </nav>
+    </header>
+    <main>
+      {% block body %}{% endblock %}
+    </main>
+  </body>
 </html>

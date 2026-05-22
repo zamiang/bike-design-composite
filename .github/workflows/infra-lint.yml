@@ -1,0 +1,66 @@
+name: infra-lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-lint.yml"
+  pull_request:
+    paths:
+      - "infra/**"
+      - ".github/workflows/infra-lint.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: terraform fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+      - name: terraform fmt
+        working-directory: infra
+        run: terraform fmt -check -recursive
+      - name: terraform init (no backend)
+        working-directory: infra
+        run: terraform init -backend=false -input=false
+      - name: terraform validate
+        working-directory: infra
+        run: terraform validate -no-color
+
+  tflint:
+    name: tflint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.53.0
+      - name: tflint --init
+        working-directory: infra
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: tflint --init
+      - name: tflint
+        working-directory: infra
+        run: tflint --format=compact
+
+  trivy:
+    name: trivy (IaC security)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy config scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: config
+          scan-ref: infra
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+          hide-progress: true

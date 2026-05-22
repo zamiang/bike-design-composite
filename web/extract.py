@@ -1,7 +1,10 @@
 """Render a Scarab paint-spec PDF and crop the side-view frame illustration."""
+
 from __future__ import annotations
+
 import io
 from pathlib import Path
+
 import pypdfium2 as pdfium
 from PIL import Image
 
@@ -47,6 +50,7 @@ def to_png_bytes(img: Image.Image) -> bytes:
 
 if __name__ == "__main__":
     import sys
+
     src = Path(sys.argv[1])
     out = src.with_suffix(".cropped.png")
     img = extract_design(src.read_bytes())

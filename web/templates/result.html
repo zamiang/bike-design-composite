@@ -1,28 +1,45 @@
 {% extends "_base.html" %}
 {% block headeractions %}
-<a class="btn" href="/">New composite</a>
+  <a class="link-arrow" href="/">New composite <span class="arrow" aria-hidden="true">→</span></a>
 {% endblock %}
 {% block body %}
-<div class="panel">
-  <h2>Result · {{ pdf_name }} · {{ elapsed }}s</h2>
-  {% if errors %}
-    {% for base, msg in errors %}
-      <div class="err"><strong>{{ base.label }}</strong>: {{ msg }}</div>
-    {% endfor %}
-  {% endif %}
-  <div class="grid">
-    {% for base, b64 in results %}
-    <figure>
-      <a href="data:image/png;base64,{{ b64 }}" download="{{ base.name }}.png">
-        <img src="data:image/png;base64,{{ b64 }}" alt="{{ base.label }}">
-      </a>
-      <figcaption>{{ base.label }} · click to download</figcaption>
-    </figure>
-    {% endfor %}
-  </div>
-</div>
-<div class="panel">
-  <h2>Extracted design (from PDF)</h2>
-  <img src="data:image/png;base64,{{ design_b64 }}" style="max-width:520px;width:100%;background:#fff;padding:8px;border-radius:10px">
-</div>
+  <section>
+    <p class="eyebrow">Preview</p>
+    <h1 class="display">Your paint, in light.</h1>
+    <div class="meta-line">
+      <strong>{{ pdf_name }}</strong>
+      <span class="dot" aria-hidden="true"></span>
+      <span>Rendered in {{ elapsed }}s</span>
+      <span class="dot" aria-hidden="true"></span>
+      <span>{{ results|length }} frame{{ '' if results|length == 1 else 's' }}</span>
+    </div>
+    {% if errors %}
+      {% for base, msg in errors %}
+        <div class="err">
+          <strong>{{ base.label }}.</strong> {{ msg }}
+        </div>
+      {% endfor %}
+    {% endif %}
+    <div class="results">
+      {% for base, b64 in results %}
+        <figure>
+          <a href="data:image/png;base64,{{ b64 }}" download="{{ base.name }}.png">
+            <img src="data:image/png;base64,{{ b64 }}" alt="{{ base.label }}">
+          </a>
+          <figcaption>
+            <span class="name">{{ base.label.split(" (")[0] }}</span>
+            <span class="dl">Download ↓</span>
+          </figcaption>
+        </figure>
+      {% endfor %}
+    </div>
+  </section>
+  <section>
+    <p class="eyebrow">Source</p>
+    <h2 class="heading">Extracted from your spec sheet.</h2>
+    <div class="sheet">
+      <img src="data:image/png;base64,{{ design_b64 }}"
+           alt="Extracted paint design">
+    </div>
+  </section>
 {% endblock %}

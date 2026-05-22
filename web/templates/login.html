@@ -1,14 +1,21 @@
 {% extends "_base.html" %}
-{% block title %}Sign in · Bike Design Composite{% endblock %}
+{% block title %}Sign in · Scarab Paint Preview{% endblock %}
 {% block body %}
-<div class="panel" style="max-width:460px;margin:40px auto">
-  <h2>Sign in</h2>
-  <form method="post" action="/login">
-    <label>Password
-      <input type="password" name="password" autofocus required>
-    </label>
-    {% if error %}<div class="err">Wrong password.</div>{% endif %}
-    <button type="submit">Sign in</button>
-  </form>
-</div>
+  <div class="login-frame">
+    <div class="login-card">
+      <p class="eyebrow">Private</p>
+      <h1>Sign in.</h1>
+      <p class="lede">For Scarab customers previewing a custom paint build.</p>
+      <form method="post" action="/login">
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input type="password" name="password" autofocus required>
+        </label>
+        {% if error %}<div class="err">That password didn&rsquo;t match.</div>{% endif %}
+        <button type="submit" class="btn-primary">
+          Continue <span class="arrow" aria-hidden="true">→</span>
+        </button>
+      </form>
+    </div>
+  </div>
 {% endblock %}

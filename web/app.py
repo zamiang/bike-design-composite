@@ -1,5 +1,7 @@
 """Small password-protected web app: upload a Scarab paint-spec PDF, get composites back."""
+
 from __future__ import annotations
+
 import base64
 import os
 import secrets
@@ -8,15 +10,14 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request, UploadFile, File, Depends
+from composite import BASES, composite
+from extract import extract_design, to_png_bytes
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from itsdangerous import BadSignature, URLSafeSerializer
 from google import genai
-
-from extract import extract_design, to_png_bytes
-from composite import BASES, composite
+from itsdangerous import BadSignature, URLSafeSerializer
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or secrets.token_urlsafe(32)
@@ -43,8 +44,8 @@ def require_auth(request: Request) -> None:
     try:
         if signer.loads(token) != "ok":
             raise HTTPException(status_code=401, detail="login required")
-    except BadSignature:
-        raise HTTPException(status_code=401, detail="login required")
+    except BadSignature as e:
+        raise HTTPException(status_code=401, detail="login required") from e
 
 
 @app.exception_handler(HTTPException)
@@ -97,11 +98,18 @@ async def generate(
     bases: list[str] = Form(...),
     _: None = Depends(require_auth),
 ):
-    pdf_bytes = await pdf.read()
-    if not pdf_bytes:
+    # Stream the upload so a 1 GB PDF can't fill the container before we reject it.
+    # Cap at 50 MB; with concurrency=4, that bounds in-flight upload memory to ~200 MB.
+    max_bytes = 50 * 1024 * 1024
+    chunk_size = 1024 * 1024
+    buf = bytearray()
+    while chunk := await pdf.read(chunk_size):
+        buf.extend(chunk)
+        if len(buf) > max_bytes:
+            raise HTTPException(status_code=413, detail="file too large (50 MB max)")
+    if not buf:
         raise HTTPException(status_code=400, detail="empty file")
-    if len(pdf_bytes) > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="file too large (50 MB max)")
+    pdf_bytes = bytes(buf)
 
     chosen = [BASES[b] for b in bases if b in BASES]
     if not chosen:
@@ -119,7 +127,8 @@ async def generate(
     results = []
     errors = []
     with ThreadPoolExecutor(max_workers=len(chosen)) as ex:
-        for base, fut in zip(chosen, [ex.submit(run_one, b) for b in chosen]):
+        futures = [ex.submit(run_one, b) for b in chosen]
+        for base, fut in zip(chosen, futures, strict=True):
             try:
                 _, img_bytes = fut.result()
                 results.append((base, base64.b64encode(img_bytes).decode("ascii")))

@@ -1,25 +1,52 @@
 {% extends "_base.html" %}
 {% block headeractions %}
-<form method="post" action="/logout"><button class="secondary" type="submit">Sign out</button></form>
+  <form method="post" action="/logout">
+    <button type="submit" class="link-arrow">
+      Sign out <span class="arrow" aria-hidden="true">→</span>
+    </button>
+  </form>
 {% endblock %}
 {% block body %}
-<div class="panel">
-  <h2>New composite</h2>
-  <form method="post" action="/generate" enctype="multipart/form-data">
-    <label>Paint-spec PDF
-      <input type="file" name="pdf" accept="application/pdf" required>
-    </label>
-    <label>Bike photos to composite onto</label>
-    {% for b in bases %}
-    <label class="choice">
-      <input type="checkbox" name="bases" value="{{ b.name }}" checked>
-      <span><strong>{{ b.label }}</strong><small>{{ b.scene[:120] }}…</small></span>
-    </label>
-    {% endfor %}
-    <p style="color:var(--muted);font-size:12px;margin-top:14px">
-      Each composite takes ~30–60 seconds and costs ~$0.15. The page will wait until they finish.
+  <section>
+    <h1 class="display">See your paint before it&rsquo;s pulled from the gun.</h1>
+    <p class="lede">
+      Upload your Scarab paint-spec PDF. We composite the design onto a real photo of the bike, so you can sit with it, in light, before approving the build.
     </p>
-    <button type="submit">Generate</button>
-  </form>
-</div>
+  </section>
+  <section>
+    <form method="post" action="/generate" enctype="multipart/form-data">
+      <p class="eyebrow">Step 01 &nbsp;·&nbsp; Paint spec</p>
+      <label class="field">
+        <span class="field-label">PDF file</span>
+        <input type="file" name="pdf" accept="application/pdf" required>
+      </label>
+      <p class="eyebrow" style="margin-top:56px">Step 02 &nbsp;·&nbsp; Frames</p>
+      <div class="picker">
+        {% for b in bases %}
+          <label class="pick">
+            <input type="checkbox" name="bases" value="{{ b.name }}" checked>
+            <figure>
+              <div class="thumb"
+                   style="background-image:url('/static/bikes/{{ b.name }}.jpg')"
+                   role="img"
+                   aria-label="{{ b.label }}"></div>
+              <figcaption class="meta">
+                <div class="meta-row">
+                  <span class="name">{{ b.label.split(" (")[0] }}</span>
+                  <span class="tick" aria-hidden="true"></span>
+                </div>
+                <p class="scene">{{ b.scene[:140] }}&hellip;</p>
+              </figcaption>
+            </figure>
+          </label>
+        {% endfor %}
+      </div>
+      <p class="note">
+        Each composite takes roughly 30 to 60 seconds and costs about $0.15 to render. Keep this tab open while it works.
+      </p>
+      <button type="submit" class="btn-primary">
+        Render preview <span class="arrow" aria-hidden="true">→</span>
+      </button>
+    </form>
+  </section>
 {% endblock %}
