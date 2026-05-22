@@ -23,7 +23,8 @@
     <div class="results">
       {% for base in results %}
         <figure>
-          <a href="/result/{{ job_id }}/{{ base.name }}.jpg" download="{{ base.name }}.jpg">
+          <a href="/result/{{ job_id }}/{{ base.name }}.jpg"
+             download="{{ base.name }}.jpg">
             <img src="/result/{{ job_id }}/{{ base.name }}.jpg" alt="{{ base.label }}">
           </a>
           <figcaption>
@@ -38,8 +39,7 @@
     <p class="eyebrow">Source</p>
     <h2 class="heading">Extracted from your spec sheet.</h2>
     <div class="sheet">
-      <img src="/result/{{ job_id }}/design.png"
-           alt="Extracted paint design">
+      <img src="/result/{{ job_id }}/design.png" alt="Extracted paint design">
     </div>
   </section>
 {% endblock %}
