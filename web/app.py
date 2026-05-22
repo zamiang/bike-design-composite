@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-import base64
+import io
 import os
+import re
 import secrets
+import threading
 import time
 import uuid
+from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -18,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from google import genai
 from itsdangerous import BadSignature, URLSafeSerializer
+from PIL import Image
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or secrets.token_urlsafe(32)
@@ -35,6 +39,57 @@ genai_client = genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOC
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
+
+# In-memory result cache. Composites are inlined into the response page as URLs
+# pointing back at this app, which keeps any single HTTP response well under
+# Cloud Run's 32 MiB response cap (it used to base64-inline ~5 MB per composite,
+# which blew past the limit with multiple frames).
+#
+# Trade-off: results live in the instance that served /generate, so subsequent
+# image GETs must land on the same instance. Cloud Run session affinity is
+# enabled in terraform to make that the common case; on miss the user sees a
+# broken image and can re-render. For this private, low-traffic tool that's
+# acceptable; if it becomes painful, swap this for GCS-backed storage.
+_RESULTS_LOCK = threading.Lock()
+_RESULTS: OrderedDict[str, dict] = OrderedDict()
+_RESULTS_MAX_JOBS = 20
+_RESULTS_TTL_SEC = 60 * 60  # 1 hour
+_JOB_ID_RE = re.compile(r"^[0-9a-f]{8}$")
+_ASSET_NAME_RE = re.compile(r"^[a-z0-9_-]{1,40}$")
+
+
+def _prune_results() -> None:
+    now = time.time()
+    expired = [k for k, v in _RESULTS.items() if now - v["created"] > _RESULTS_TTL_SEC]
+    for k in expired:
+        _RESULTS.pop(k, None)
+    while len(_RESULTS) > _RESULTS_MAX_JOBS:
+        _RESULTS.popitem(last=False)
+
+
+def _store_job(job_id: str, assets: dict[str, tuple[str, bytes]]) -> None:
+    with _RESULTS_LOCK:
+        _RESULTS[job_id] = {"created": time.time(), "assets": assets}
+        _RESULTS.move_to_end(job_id)
+        _prune_results()
+
+
+def _get_asset(job_id: str, name: str) -> tuple[str, bytes] | None:
+    with _RESULTS_LOCK:
+        job = _RESULTS.get(job_id)
+        if not job:
+            return None
+        return job["assets"].get(name)
+
+
+def _to_jpeg(png_bytes: bytes, quality: int = 88) -> bytes:
+    """Re-encode a PNG to JPEG. Cuts composite size ~5-10x at visually negligible loss."""
+    with Image.open(io.BytesIO(png_bytes)) as im:
+        if im.mode != "RGB":
+            im = im.convert("RGB")
+        out = io.BytesIO()
+        im.save(out, format="JPEG", quality=quality, optimize=True, progressive=True)
+        return out.getvalue()
 
 
 def require_auth(request: Request) -> None:
@@ -126,14 +181,19 @@ async def generate(
 
     results = []
     errors = []
+    assets: dict[str, tuple[str, bytes]] = {"design": ("image/png", design_png)}
     with ThreadPoolExecutor(max_workers=len(chosen)) as ex:
         futures = [ex.submit(run_one, b) for b in chosen]
         for base, fut in zip(chosen, futures, strict=True):
             try:
                 _, img_bytes = fut.result()
-                results.append((base, base64.b64encode(img_bytes).decode("ascii")))
+                jpeg_bytes = _to_jpeg(img_bytes)
+                assets[base.name] = ("image/jpeg", jpeg_bytes)
+                results.append(base)
             except Exception as e:
                 errors.append((base, str(e)))
+
+    _store_job(job_id, assets)
 
     return templates.TemplateResponse(
         "result.html",
@@ -141,11 +201,25 @@ async def generate(
             "request": request,
             "job_id": job_id,
             "elapsed": f"{time.time() - t0:.1f}",
-            "design_b64": base64.b64encode(design_png).decode("ascii"),
             "results": results,
             "errors": errors,
             "pdf_name": pdf.filename,
         },
+    )
+
+
+@app.get("/result/{job_id}/{name}.{ext}")
+def result_asset(job_id: str, name: str, ext: str, _: None = Depends(require_auth)):
+    if not _JOB_ID_RE.match(job_id) or not _ASSET_NAME_RE.match(name) or ext not in ("jpg", "png"):
+        raise HTTPException(status_code=404, detail="not found")
+    asset = _get_asset(job_id, name)
+    if not asset:
+        raise HTTPException(status_code=404, detail="not found")
+    mime, data = asset
+    return Response(
+        content=data,
+        media_type=mime,
+        headers={"Cache-Control": "private, max-age=3600"},
     )
 
 

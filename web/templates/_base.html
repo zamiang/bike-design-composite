@@ -123,6 +123,21 @@
   .btn-primary:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
   .btn-primary .arrow{transition:transform .25s cubic-bezier(.2,.7,.2,1)}
   .btn-primary:hover .arrow{transform:translateX(4px)}
+  .btn-primary[disabled],.btn-primary[aria-busy="true"]{
+    cursor:not-allowed;opacity:.7;background:var(--ink);transform:none;
+  }
+  .btn-primary[disabled]:hover,.btn-primary[aria-busy="true"]:hover{
+    background:var(--ink);transform:none;
+  }
+  .btn-primary[disabled]:hover .arrow,.btn-primary[aria-busy="true"]:hover .arrow{
+    transform:none;
+  }
+  .btn-spinner{
+    display:inline-block;width:14px;height:14px;border-radius:50%;
+    border:2px solid rgba(255,255,255,0.35);border-top-color:var(--paper);
+    animation:btn-spin .7s linear infinite;
+  }
+  @keyframes btn-spin{to{transform:rotate(360deg)}}
 
   .link-arrow{
     display:inline-flex;align-items:center;gap:8px;

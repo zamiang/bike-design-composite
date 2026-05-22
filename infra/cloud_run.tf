@@ -9,6 +9,11 @@ resource "google_cloud_run_v2_service" "app" {
 
     timeout = "900s"
 
+    # Results are cached in-process on the instance that served /generate, then
+    # served back over follow-up GETs to /result/{job_id}/.... Session affinity
+    # keeps those follow-ups on the same instance so the cache hits.
+    session_affinity = true
+
     scaling {
       min_instance_count = 0
       max_instance_count = 3
