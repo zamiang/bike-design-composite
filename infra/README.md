@@ -85,6 +85,25 @@ terraform apply
 
 You should see a `service_url` output pointing to a `*.run.app` URL that serves the hello-world page.
 
+### 5. Grant the deployer SA access to the state bucket
+
+The first `terraform apply` (above, from your laptop as owner) creates the `paint-preview-deployer` service account. For the GitHub Actions `infra-plan` / `infra-apply` workflows to run `terraform init` as that SA, it needs read/write on the state bucket. Terraform can't bootstrap this for itself: `init` reads the bucket before any resource is evaluated.
+
+```sh
+DEPLOYER=paint-preview-deployer@${PROJECT}.iam.gserviceaccount.com
+BUCKET=gs://${PROJECT}-tfstate-bike-design
+
+gcloud storage buckets add-iam-policy-binding "$BUCKET" \
+  --member="serviceAccount:${DEPLOYER}" \
+  --role="roles/storage.objectUser"
+
+gcloud storage buckets add-iam-policy-binding "$BUCKET" \
+  --member="serviceAccount:${DEPLOYER}" \
+  --role="roles/storage.legacyBucketReader"
+```
+
+After this, the bindings are also tracked in `iam.tf` so subsequent terraform runs reconcile them; the manual grant is only needed because of the chicken-and-egg with the state backend.
+
 ## How deploys roll after bootstrap
 
 Two pipelines, deliberately separate:

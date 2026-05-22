@@ -35,3 +35,9 @@ variable "wif_pool_id" {
   description = "ID of the Workload Identity Pool created during bootstrap."
   default     = "github-pool"
 }
+
+variable "tfstate_bucket" {
+  type        = string
+  description = "GCS bucket holding Terraform state (created during bootstrap, matches backend.tf)."
+  default     = "time-279118-tfstate-bike-design"
+}
