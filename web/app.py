@@ -112,7 +112,7 @@ async def auth_redirect(request: Request, exc: HTTPException):
 
 @app.get("/login", response_class=HTMLResponse)
 def login_form(request: Request, error: str | None = None):
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+    return templates.TemplateResponse(request, "login.html", {"error": error})
 
 
 @app.post("/login")
@@ -141,8 +141,9 @@ def logout():
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request, _: None = Depends(require_auth)):
     return templates.TemplateResponse(
+        request,
         "index.html",
-        {"request": request, "bases": list(BASES.values())},
+        {"bases": list(BASES.values())},
     )
 
 
@@ -196,9 +197,9 @@ async def generate(
     _store_job(job_id, assets)
 
     return templates.TemplateResponse(
+        request,
         "result.html",
         {
-            "request": request,
             "job_id": job_id,
             "elapsed": f"{time.time() - t0:.1f}",
             "results": results,
