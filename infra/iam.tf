@@ -16,6 +16,24 @@ resource "google_project_iam_member" "deployer_artifactregistry_writer" {
   member  = "serviceAccount:${google_service_account.deployer.email}"
 }
 
+# infra-plan / infra-apply workflows run `terraform init` as the deployer SA,
+# which needs read/write on the GCS state bucket. The bucket itself is created
+# out-of-band in bootstrap (see infra/README.md), so this is the bucket-scoped
+# IAM binding that lets CI use it.
+resource "google_storage_bucket_iam_member" "deployer_tfstate_object_user" {
+  bucket = var.tfstate_bucket
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${google_service_account.deployer.email}"
+}
+
+# objectUser covers reading/writing/deleting the state objects themselves but
+# not listing the bucket, which `terraform init` does to enumerate workspaces.
+resource "google_storage_bucket_iam_member" "deployer_tfstate_legacy_reader" {
+  bucket = var.tfstate_bucket
+  role   = "roles/storage.legacyBucketReader"
+  member = "serviceAccount:${google_service_account.deployer.email}"
+}
+
 resource "google_service_account_iam_member" "deployer_actas_runtime" {
   service_account_id = google_service_account.runtime.name
   role               = "roles/iam.serviceAccountUser"

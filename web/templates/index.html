@@ -44,9 +44,29 @@
       <p class="note">
         Each composite takes roughly 30 to 60 seconds and costs about $0.15 to render. Keep this tab open while it works.
       </p>
-      <button type="submit" class="btn-primary">
-        Render preview <span class="arrow" aria-hidden="true">→</span>
+      <button type="submit" class="btn-primary" data-render-btn>
+        <span class="btn-spinner" aria-hidden="true" hidden></span>
+        <span data-label>Render preview</span>
+        <span class="arrow" aria-hidden="true">→</span>
       </button>
     </form>
+    <script>
+      (function(){
+        var form=document.querySelector('form[action="/generate"]');
+        var btn=form.querySelector('[data-render-btn]');
+        var label=btn.querySelector('[data-label]');
+        var spinner=btn.querySelector('.btn-spinner');
+        var arrow=btn.querySelector('.arrow');
+        form.addEventListener('submit',function(e){
+          if(btn.dataset.busy){e.preventDefault();return}
+          btn.dataset.busy='1';
+          btn.disabled=true;
+          btn.setAttribute('aria-busy','true');
+          label.textContent='Rendering, this can take a minute';
+          spinner.hidden=false;
+          arrow.hidden=true;
+        });
+      })();
+    </script>
   </section>
 {% endblock %}

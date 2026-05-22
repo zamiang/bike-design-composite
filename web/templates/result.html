@@ -21,10 +21,11 @@
       {% endfor %}
     {% endif %}
     <div class="results">
-      {% for base, b64 in results %}
+      {% for base in results %}
         <figure>
-          <a href="data:image/png;base64,{{ b64 }}" download="{{ base.name }}.png">
-            <img src="data:image/png;base64,{{ b64 }}" alt="{{ base.label }}">
+          <a href="/result/{{ job_id }}/{{ base.name }}.jpg"
+             download="{{ base.name }}.jpg">
+            <img src="/result/{{ job_id }}/{{ base.name }}.jpg" alt="{{ base.label }}">
           </a>
           <figcaption>
             <span class="name">{{ base.label.split(" (")[0] }}</span>
@@ -38,8 +39,7 @@
     <p class="eyebrow">Source</p>
     <h2 class="heading">Extracted from your spec sheet.</h2>
     <div class="sheet">
-      <img src="data:image/png;base64,{{ design_b64 }}"
-           alt="Extracted paint design">
+      <img src="/result/{{ job_id }}/design.png" alt="Extracted paint design">
     </div>
   </section>
 {% endblock %}
