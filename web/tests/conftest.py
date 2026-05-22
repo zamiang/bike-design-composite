@@ -29,4 +29,5 @@ def app_module(monkeypatch):
 
     sys.modules.pop("app", None)
     import app  # noqa: PLC0415
+
     return app
