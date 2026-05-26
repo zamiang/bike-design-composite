@@ -10,7 +10,16 @@ route so a regression fails CI instead of production.
 
 from __future__ import annotations
 
+import io
+
 from fastapi.testclient import TestClient
+from PIL import Image
+
+
+def _tiny_png() -> bytes:
+    out = io.BytesIO()
+    Image.new("RGB", (4, 4), (200, 120, 90)).save(out, format="PNG")
+    return out.getvalue()
 
 
 def _client(app_module, *, authenticated: bool = False):
@@ -40,3 +49,23 @@ def test_index_redirects_when_unauthenticated(app_module):
     response = _client(app_module).get("/")
     assert response.status_code == 303
     assert response.headers["location"] == "/login"
+
+
+def test_generate_renders_result(app_module, monkeypatch):
+    """The /generate response renders result.html (the third TemplateResponse
+    call site). Stub the PDF extraction and Vertex composite so the route
+    exercises only request handling and the template render, not GCP."""
+    png = _tiny_png()
+    monkeypatch.setattr(app_module, "extract_design", lambda pdf_bytes: object())
+    monkeypatch.setattr(app_module, "to_png_bytes", lambda img: png)
+    monkeypatch.setattr(app_module, "composite", lambda **kwargs: png)
+
+    response = _client(app_module, authenticated=True).post(
+        "/generate",
+        files={"pdf": ("spec.pdf", b"%PDF-1.4 stub", "application/pdf")},
+        data={"bases": "studio"},
+    )
+    assert response.status_code == 200
+    # Confirms result.html (not index) rendered with our context.
+    assert "spec.pdf" in response.text
+    assert "/result/" in response.text
