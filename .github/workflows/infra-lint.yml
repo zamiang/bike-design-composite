@@ -19,8 +19,8 @@ jobs:
     name: terraform fmt + validate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
+      - uses: actions/checkout@v6
+      - uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: 1.9.8
       - name: terraform fmt
@@ -37,8 +37,8 @@ jobs:
     name: tflint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: terraform-linters/setup-tflint@v4
+      - uses: actions/checkout@v6
+      - uses: terraform-linters/setup-tflint@v6
         with:
           tflint_version: v0.53.0
       - name: tflint --init
@@ -54,7 +54,7 @@ jobs:
     name: trivy (IaC security)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Trivy config scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
