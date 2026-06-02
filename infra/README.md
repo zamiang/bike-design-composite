@@ -73,6 +73,30 @@ gh variable set GCP_PROJECT_NUMBER --body "$PROJECT_NUMBER"
 
 (Set it once per repo. The workflows fail loudly with a clear message if it's missing.)
 
+### 5. Results bucket
+
+The app persists each composite to a GCS bucket and serves it back over `/result/{job_id}/...` GETs, so those follow-up requests resolve no matter which Cloud Run instance handles them. (Results used to live in-process on the instance that ran `/generate`; any GET load-balanced elsewhere, common under autoscaling, 404'd.) Create the bucket out-of-band, like the state bucket, so Terraform never needs project-level bucket-create:
+
+```sh
+RESULTS_BUCKET="${PROJECT}-scarab-paint-preview-results"
+
+gcloud storage buckets create "gs://${RESULTS_BUCKET}" \
+  --project="$PROJECT" \
+  --location="$REGION" \
+  --uniform-bucket-level-access \
+  --public-access-prevention
+
+# Results are disposable previews; expire them so the bucket doesn't accumulate.
+# (Lifecycle age is in days, the smallest granularity GCS offers.)
+cat > /tmp/results-lifecycle.json <<'EOF'
+{"rule": [{"action": {"type": "Delete"}, "condition": {"age": 1}}]}
+EOF
+gcloud storage buckets update "gs://${RESULTS_BUCKET}" \
+  --lifecycle-file=/tmp/results-lifecycle.json
+```
+
+The bucket name must match `var.results_bucket` in `variables.tf`. Terraform then grants the runtime SA `roles/storage.objectUser` on it (scoped to this bucket only, see `iam.tf`) during the first apply below.
+
 ## First apply
 
 The `image` variable defaults to GCP's `hello` container so the first apply works before any app image exists.
@@ -85,7 +109,7 @@ terraform apply
 
 You should see a `service_url` output pointing to a `*.run.app` URL that serves the hello-world page.
 
-### 5. Grant the deployer SA access to the state bucket
+### 6. Grant the deployer SA access to the state bucket
 
 The first `terraform apply` (above, from your laptop as owner) creates the `paint-preview-deployer` service account. For the GitHub Actions `infra-plan` / `infra-apply` workflows to run `terraform init` as that SA, it needs read/write on the state bucket. Terraform can't bootstrap this for itself: `init` reads the bucket before any resource is evaluated.
 

@@ -4,6 +4,18 @@ resource "google_project_iam_member" "runtime_aiplatform_user" {
   member  = "serviceAccount:${google_service_account.runtime.email}"
 }
 
+# The runtime SA writes composite results to the results bucket and reads them
+# back to serve /result/... GETs. objectUser is scoped to this one bucket
+# (get/create/delete on its objects, no setIamPolicy, no project-wide storage),
+# so it doesn't widen the SA's reach beyond ephemeral preview storage. The
+# bucket is created out-of-band in bootstrap (see infra/README.md), same as the
+# state bucket, so Terraform never needs project-level bucket-create.
+resource "google_storage_bucket_iam_member" "runtime_results_object_user" {
+  bucket = var.results_bucket
+  role   = "roles/storage.objectUser"
+  member = "serviceAccount:${google_service_account.runtime.email}"
+}
+
 resource "google_project_iam_member" "deployer_run_admin" {
   project = var.project_id
   role    = "roles/run.admin"

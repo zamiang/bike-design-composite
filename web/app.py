@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 import re
 import secrets
@@ -27,7 +28,10 @@ APP_PASSWORD = os.environ.get("APP_PASSWORD")
 SESSION_SECRET = os.environ.get("SESSION_SECRET") or secrets.token_urlsafe(32)
 GCP_PROJECT = os.environ.get("GCP_PROJECT", "time-279118")
 GCP_LOCATION = os.environ.get("GCP_LOCATION", "global")
+RESULTS_BUCKET = os.environ.get("RESULTS_BUCKET")
 COOKIE_NAME = "bd_session"
+
+logger = logging.getLogger(__name__)
 
 if not APP_PASSWORD:
     # Fail loudly on startup rather than silently allowing entry.
@@ -40,22 +44,43 @@ genai_client = genai.Client(vertexai=True, project=GCP_PROJECT, location=GCP_LOC
 app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 
-# In-memory result cache. Composites are inlined into the response page as URLs
-# pointing back at this app, which keeps any single HTTP response well under
-# Cloud Run's 32 MiB response cap (it used to base64-inline ~5 MB per composite,
-# which blew past the limit with multiple frames).
+# Composites are inlined into the response page as URLs pointing back at this
+# app, which keeps any single HTTP response well under Cloud Run's 32 MiB cap
+# (it used to base64-inline ~5 MB per composite, which blew past the limit with
+# multiple frames).
 #
-# Trade-off: results live in the instance that served /generate, so subsequent
-# image GETs must land on the same instance. Cloud Run session affinity is
-# enabled in terraform to make that the common case; on miss the user sees a
-# broken image and can re-render. For this private, low-traffic tool that's
-# acceptable; if it becomes painful, swap this for GCS-backed storage.
+# Those follow-up image GETs to /result/{job_id}/... are load-balanced across
+# instances, so the results have to live somewhere every instance can reach:
+# the GCS bucket named by RESULTS_BUCKET. (Before this, results lived only in
+# the instance that ran /generate; any GET routed elsewhere, common under
+# autoscaling, 404'd.) The bucket has a lifecycle rule that expires objects, so
+# there's nothing to prune in-process.
+#
+# When RESULTS_BUCKET is unset (local dev, tests) we fall back to an in-process
+# store so the app runs without GCP. That store isn't shared across instances,
+# which is fine for single-process local use.
 _RESULTS_LOCK = threading.Lock()
 _RESULTS: OrderedDict[str, dict] = OrderedDict()
 _RESULTS_MAX_JOBS = 20
 _RESULTS_TTL_SEC = 60 * 60  # 1 hour
 _JOB_ID_RE = re.compile(r"^[0-9a-f]{8}$")
 _ASSET_NAME_RE = re.compile(r"^[a-z0-9_-]{1,40}$")
+
+# Lazily built so importing this module (e.g. in tests) needs no GCP creds, and
+# so the in-memory fallback path never touches google-cloud-storage.
+_storage_lock = threading.Lock()
+_storage_client = None
+
+
+def _results_bucket():
+    global _storage_client
+    if _storage_client is None:
+        with _storage_lock:
+            if _storage_client is None:
+                from google.cloud import storage  # noqa: PLC0415
+
+                _storage_client = storage.Client(project=GCP_PROJECT)
+    return _storage_client.bucket(RESULTS_BUCKET)
 
 
 def _prune_results() -> None:
@@ -67,19 +92,45 @@ def _prune_results() -> None:
         _RESULTS.popitem(last=False)
 
 
-def _store_job(job_id: str, assets: dict[str, tuple[str, bytes]]) -> None:
-    with _RESULTS_LOCK:
-        _RESULTS[job_id] = {"created": time.time(), "assets": assets}
-        _RESULTS.move_to_end(job_id)
-        _prune_results()
+def _store_job(job_id: str, assets: dict[str, bytes]) -> set[str]:
+    """Persist a job's assets. Returns the set of asset names that failed to
+    store (empty on full success). A single failed upload must not throw away
+    the composites that did store, nor 500 the whole /generate response, so the
+    GCS path uploads each asset independently and reports the failures."""
+    if not RESULTS_BUCKET:
+        with _RESULTS_LOCK:
+            _RESULTS[job_id] = {"created": time.time(), "assets": assets}
+            _RESULTS.move_to_end(job_id)
+            _prune_results()
+        return set()
+    bucket = _results_bucket()
+    failed = set()
+    for name, data in assets.items():
+        try:
+            bucket.blob(f"{job_id}/{name}").upload_from_string(data)
+        except Exception:
+            logger.exception("failed to store result asset %s/%s", job_id, name)
+            failed.add(name)
+    return failed
 
 
-def _get_asset(job_id: str, name: str) -> tuple[str, bytes] | None:
-    with _RESULTS_LOCK:
-        job = _RESULTS.get(job_id)
-        if not job:
-            return None
-        return job["assets"].get(name)
+def _get_asset(job_id: str, name: str) -> bytes | None:
+    if not RESULTS_BUCKET:
+        with _RESULTS_LOCK:
+            job = _RESULTS.get(job_id)
+            return job["assets"].get(name) if job else None
+    from google.cloud.exceptions import NotFound  # noqa: PLC0415
+
+    try:
+        return _results_bucket().blob(f"{job_id}/{name}").download_as_bytes()
+    except NotFound:
+        return None
+    except Exception:
+        # Transient GCS trouble (auth drift, 503, network) shouldn't 500 the
+        # image GET and break the whole result page; log it and let the caller
+        # render a missing asset so the user can re-render.
+        logger.exception("failed to fetch result asset %s/%s", job_id, name)
+        return None
 
 
 def _to_jpeg(png_bytes: bytes, quality: int = 88) -> bytes:
@@ -182,19 +233,25 @@ async def generate(
 
     results = []
     errors = []
-    assets: dict[str, tuple[str, bytes]] = {"design": ("image/png", design_png)}
+    assets: dict[str, bytes] = {"design": design_png}
     with ThreadPoolExecutor(max_workers=len(chosen)) as ex:
         futures = [ex.submit(run_one, b) for b in chosen]
         for base, fut in zip(chosen, futures, strict=True):
             try:
                 _, img_bytes = fut.result()
-                jpeg_bytes = _to_jpeg(img_bytes)
-                assets[base.name] = ("image/jpeg", jpeg_bytes)
+                assets[base.name] = _to_jpeg(img_bytes)
                 results.append(base)
             except Exception as e:
                 errors.append((base, str(e)))
 
-    _store_job(job_id, assets)
+    store_failures = _store_job(job_id, assets)
+    if store_failures:
+        # A composite that rendered but couldn't be persisted would link a
+        # broken image; surface it as an error instead and drop it from results.
+        for base in results:
+            if base.name in store_failures:
+                errors.append((base, "result could not be saved, please re-render"))
+        results = [base for base in results if base.name not in store_failures]
 
     return templates.TemplateResponse(
         request,
@@ -213,10 +270,12 @@ async def generate(
 def result_asset(job_id: str, name: str, ext: str, _: None = Depends(require_auth)):
     if not _JOB_ID_RE.match(job_id) or not _ASSET_NAME_RE.match(name) or ext not in ("jpg", "png"):
         raise HTTPException(status_code=404, detail="not found")
-    asset = _get_asset(job_id, name)
-    if not asset:
+    data = _get_asset(job_id, name)
+    if data is None:
         raise HTTPException(status_code=404, detail="not found")
-    mime, data = asset
+    # The template only ever links each asset with its real extension (composites
+    # as .jpg, the extracted design as .png), so the ext maps 1:1 to the mime.
+    mime = "image/png" if ext == "png" else "image/jpeg"
     return Response(
         content=data,
         media_type=mime,

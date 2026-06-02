@@ -41,3 +41,9 @@ variable "tfstate_bucket" {
   description = "GCS bucket holding Terraform state (created during bootstrap, matches backend.tf)."
   default     = "time-279118-tfstate-bike-design"
 }
+
+variable "results_bucket" {
+  type        = string
+  description = "GCS bucket holding ephemeral composite results the app serves back over /result/... GETs. Created during bootstrap (see README); objects are keyed by job_id and expire via a lifecycle rule. Backing the results in a bucket (not in-process) is what lets the follow-up image GETs resolve on any Cloud Run instance."
+  default     = "time-279118-scarab-paint-preview-results"
+}
