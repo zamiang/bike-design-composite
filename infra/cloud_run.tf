@@ -9,10 +9,10 @@ resource "google_cloud_run_v2_service" "app" {
 
     timeout = "900s"
 
-    # Results are cached in-process on the instance that served /generate, then
-    # served back over follow-up GETs to /result/{job_id}/.... Session affinity
-    # keeps those follow-ups on the same instance so the cache hits.
-    session_affinity = true
+    # Results are persisted to the results bucket (RESULTS_BUCKET below) and
+    # served back over follow-up GETs to /result/{job_id}/..., so those GETs
+    # resolve on any instance. No session affinity needed; the old in-process
+    # cache that required it is gone.
 
     scaling {
       min_instance_count = 0
@@ -47,6 +47,11 @@ resource "google_cloud_run_v2_service" "app" {
       }
 
       env {
+        name  = "RESULTS_BUCKET"
+        value = var.results_bucket
+      }
+
+      env {
         name = "APP_PASSWORD"
         value_source {
           secret_key_ref {
@@ -73,6 +78,7 @@ resource "google_cloud_run_v2_service" "app" {
     google_secret_manager_secret_iam_member.runtime_app_password,
     google_secret_manager_secret_iam_member.runtime_session_secret,
     google_project_iam_member.runtime_aiplatform_user,
+    google_storage_bucket_iam_member.runtime_results_object_user,
   ]
 
   lifecycle {

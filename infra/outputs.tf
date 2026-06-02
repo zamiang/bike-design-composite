@@ -8,6 +8,11 @@ output "image_repo" {
   value       = local.image_repo_url
 }
 
+output "results_bucket" {
+  description = "GCS bucket the app uses for ephemeral composite results."
+  value       = var.results_bucket
+}
+
 output "runtime_service_account" {
   value = google_service_account.runtime.email
 }
