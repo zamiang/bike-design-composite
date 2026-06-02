@@ -102,9 +102,59 @@ def test_gcs_backed_store_round_trips_and_keys_by_job(app_module, monkeypatch):
     monkeypatch.setattr(app_module, "RESULTS_BUCKET", "fake-bucket")
     monkeypatch.setattr(app_module, "_results_bucket", lambda: _FakeBucket(store))
 
-    app_module._store_job("abcd1234", {"design": b"PNG", "studio": b"JPEG"})
+    assert app_module._store_job("abcd1234", {"design": b"PNG", "studio": b"JPEG"}) == set()
     assert store == {"abcd1234/design": b"PNG", "abcd1234/studio": b"JPEG"}
     assert app_module._get_asset("abcd1234", "studio") == b"JPEG"
     assert app_module._get_asset("abcd1234", "design") == b"PNG"
     assert app_module._get_asset("abcd1234", "missing") is None
     assert app_module._get_asset("00000000", "studio") is None
+
+
+class _FlakyBucket:
+    """Uploads of `failing_key` raise; everything else stores. Reads of a stored
+    key succeed, and a transient (non-NotFound) read error surfaces too."""
+
+    def __init__(self, store, *, failing_key):
+        self._store = store
+        self._failing_key = failing_key
+
+    def blob(self, key):
+        if key == self._failing_key:
+            return _RaisingBlob(key)
+        return _FakeBlob(self._store, key)
+
+
+class _RaisingBlob:
+    def __init__(self, key):
+        self._key = key
+
+    def upload_from_string(self, data):
+        raise RuntimeError(f"GCS unavailable for {self._key}")
+
+    def download_as_bytes(self):
+        raise RuntimeError(f"GCS unavailable for {self._key}")
+
+
+def test_store_job_reports_failed_assets_without_dropping_the_rest(app_module, monkeypatch):
+    """A single failed upload is reported (not raised) and the assets that did
+    store are still persisted, so /generate can degrade instead of 500-ing."""
+    store: dict[str, bytes] = {}
+    monkeypatch.setattr(app_module, "RESULTS_BUCKET", "fake-bucket")
+    monkeypatch.setattr(
+        app_module, "_results_bucket", lambda: _FlakyBucket(store, failing_key="abcd1234/studio")
+    )
+
+    failed = app_module._store_job("abcd1234", {"design": b"PNG", "studio": b"JPEG"})
+    assert failed == {"studio"}
+    assert store == {"abcd1234/design": b"PNG"}  # the good asset still landed
+
+
+def test_get_asset_transient_error_returns_none(app_module, monkeypatch):
+    """A non-NotFound GCS read error degrades to None (-> 404) instead of 500."""
+    store: dict[str, bytes] = {}
+    monkeypatch.setattr(app_module, "RESULTS_BUCKET", "fake-bucket")
+    monkeypatch.setattr(
+        app_module, "_results_bucket", lambda: _FlakyBucket(store, failing_key="abcd1234/studio")
+    )
+
+    assert app_module._get_asset("abcd1234", "studio") is None

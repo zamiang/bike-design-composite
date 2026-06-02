@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 import re
 import secrets
@@ -29,6 +30,8 @@ GCP_PROJECT = os.environ.get("GCP_PROJECT", "time-279118")
 GCP_LOCATION = os.environ.get("GCP_LOCATION", "global")
 RESULTS_BUCKET = os.environ.get("RESULTS_BUCKET")
 COOKIE_NAME = "bd_session"
+
+logger = logging.getLogger(__name__)
 
 if not APP_PASSWORD:
     # Fail loudly on startup rather than silently allowing entry.
@@ -89,16 +92,26 @@ def _prune_results() -> None:
         _RESULTS.popitem(last=False)
 
 
-def _store_job(job_id: str, assets: dict[str, bytes]) -> None:
+def _store_job(job_id: str, assets: dict[str, bytes]) -> set[str]:
+    """Persist a job's assets. Returns the set of asset names that failed to
+    store (empty on full success). A single failed upload must not throw away
+    the composites that did store, nor 500 the whole /generate response, so the
+    GCS path uploads each asset independently and reports the failures."""
     if not RESULTS_BUCKET:
         with _RESULTS_LOCK:
             _RESULTS[job_id] = {"created": time.time(), "assets": assets}
             _RESULTS.move_to_end(job_id)
             _prune_results()
-        return
+        return set()
     bucket = _results_bucket()
+    failed = set()
     for name, data in assets.items():
-        bucket.blob(f"{job_id}/{name}").upload_from_string(data)
+        try:
+            bucket.blob(f"{job_id}/{name}").upload_from_string(data)
+        except Exception:
+            logger.exception("failed to store result asset %s/%s", job_id, name)
+            failed.add(name)
+    return failed
 
 
 def _get_asset(job_id: str, name: str) -> bytes | None:
@@ -111,6 +124,12 @@ def _get_asset(job_id: str, name: str) -> bytes | None:
     try:
         return _results_bucket().blob(f"{job_id}/{name}").download_as_bytes()
     except NotFound:
+        return None
+    except Exception:
+        # Transient GCS trouble (auth drift, 503, network) shouldn't 500 the
+        # image GET and break the whole result page; log it and let the caller
+        # render a missing asset so the user can re-render.
+        logger.exception("failed to fetch result asset %s/%s", job_id, name)
         return None
 
 
@@ -225,7 +244,14 @@ async def generate(
             except Exception as e:
                 errors.append((base, str(e)))
 
-    _store_job(job_id, assets)
+    store_failures = _store_job(job_id, assets)
+    if store_failures:
+        # A composite that rendered but couldn't be persisted would link a
+        # broken image; surface it as an error instead and drop it from results.
+        for base in results:
+            if base.name in store_failures:
+                errors.append((base, "result could not be saved, please re-render"))
+        results = [base for base in results if base.name not in store_failures]
 
     return templates.TemplateResponse(
         request,
