@@ -14,6 +14,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  id-token: write # Required for the action's OIDC token exchange
   actions: read # Required for Claude to read CI results on PRs
 
 jobs:
