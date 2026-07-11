@@ -83,12 +83,12 @@ Your task: produce a new photograph that is identical to Image 1 in every way EX
 Strict requirements:
 - Keep the bike's geometry, pose, framing, camera angle, perspective, and scale identical to Image 1.
 - Keep the entire background, floor, lighting, and shadows identical to Image 1.
-- Keep these components unchanged and in exactly the same position: saddle, handlebars and bar tape, wheel rims and hubs, water bottle cages, all cables and housings.
+- Keep these components unchanged and in exactly the same position: saddle, seatpost, stem, handlebars and bar tape, wheel rims and hubs, water bottle cages, all cables and housings.
 - Apply the painted paint scheme from Image 2 to the frame tubes and the fork legs. Apply the colors, stripes, patterns, decals, logos ("SCARAB" wordmark, scarab beetle icon, "HECHO EN COLOMBIA" tag, Colombian flag stripe), and small decorative illustrations from Image 2 onto the corresponding tubes of the bike in Image 1. The base frame color must be the warm white shown in Image 2 (with the colored panels and decorations applied where the illustration shows them) — do not keep the original yellow or red paint.
 - Change the following components on the bike (these are deliberate modifications, not preserved from Image 1):
   - Drivetrain and brakes: replace the existing groupset with a Shimano Dura-Ace 12-speed groupset — Dura-Ace shift/brake levers, front and rear derailleurs, crankset and chainrings, chain, and a 12-speed Dura-Ace cassette. Keep them in the same positions and mounting points, just rendered as Dura-Ace components.
   - Tires: replace the tires with wider 50mm tires mounted on the existing rims, keeping the wheels in the same position. The tires must be solid black with black sidewalls (no tan, gum, or brown sidewalls of any kind).
-  - Stem and seatpost: paint the stem and the seatpost gloss white.
+- Do not repaint the stem or the seatpost. Leave them exactly as they appear in Image 1.
 - Wrap the artwork realistically around the cylindrical tubes with photographic lighting, subtle highlights and shadows on the curved metal surfaces, and a semi-matte clearcoat finish.
 - Respect occlusion: where components, cables, or water bottle cages were in front of the frame in Image 1, they must still be in front of the frame in the output.
 - Account for perspective and foreshortening of the frame in Image 1 when wrapping the artwork.
